@@ -48,3 +48,10 @@ For GitHub Pages, rebuild and copy `dist/` into `docs/`, including `.nojekyll`, 
 ## License
 
 MIT. See `LICENSE`.
+
+## Texted bottle photos
+Apply `supabase/agent-photos.sql` after `agent.sql`. Deploy `supabase/functions/agent-photo/index.ts` as `agent-photo` with gateway JWT verification off (the function checks the paired agent key). It uses Supabase's server-only service-role environment variable, never a frontend service key.
+
+The helper `/agent.html` adds a wine, then attaches a photo by exact producer/name/vintage. It only matches one wine belonging to the paired owner, requires no existing photo, and never replaces an image. Both claims and final attachment check the current key. The server accepts JPEGs up to 2 MB, dimensions at most 2000 px, decodes and re-encodes to remove metadata, stores in the owner's folder in the existing private bucket, and limits reservations to 30/hour. The key cannot read, edit, delete or share. Photos remain excluded from shared collection links. Turn off under Privacy & storage revokes future adds and attachments. This is not on-device-only: texted photos pass through the messaging service and Instinct, then Supabase. Project operators and Supabase can access storage. Do not log upload bodies or keys.
+
+Failure handling: never retry a successful attachment. On an uncertain response, inspect current owner state before retrying. Failure after a reservation may require ten minutes before another attempt; storage objects are removed when attach fails. Duplicate bottle identities intentionally require the owner to attach from the app instead of guessing.
