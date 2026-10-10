@@ -31,9 +31,15 @@ The public repository contains code only. Do not commit personal tasting entries
 
 Supabase may pause a free project after one week of inactivity. Its default email service is not production-ready and sends only to organization members. Configure an external email service or a social-login provider before enabling public sign-ups. Export entries you care about; free hosting is not a backup guarantee.
 
-## Current development status
+## Deployment and checks
 
-This is pre-release source. Production authentication, cross-account isolation, sharing, and seeded private data must pass end-to-end checks before a release is called ready.
+The hosted app uses GitHub sign-in and GitHub Pages. Collections start private. Use Share to create a read-only link, copy it again later, or turn it off. A reader must sign in. Revocation stops future access but cannot remove copies someone saved.
+
+Entries can be added, edited, deleted, searched, filtered, and exported as JSON under Privacy & storage. Photo upload is not included in this version.
+
+`npm test` checks input validation, safe text rendering, row isolation, blocked owner spoofing, and read-only revocable sharing against PostgreSQL through PGlite. Production checks include GitHub OAuth, saved edits surviving reload, anonymous denial, a separate authenticated database subject seeing no private rows, and share-link revocation.
+
+For GitHub Pages, rebuild and copy `dist/` into `docs/`, including `.nojekyll`, then publish `main:/docs`. Keep project credentials and private seed migrations out of this repository.
 
 ## License
 
