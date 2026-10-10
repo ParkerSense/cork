@@ -1,0 +1,24 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {PGlite} from '@electric-sql/pglite';
+test('photo storage policies: owner folder only, no anonymous access',async()=>{
+ const db=new PGlite();
+ await db.exec(`create role anon;create role authenticated;create schema auth;create schema storage;
+ create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('app.user_id',true),'')::uuid$$;
+ grant usage on schema auth,storage to authenticated;grant execute on function auth.uid() to authenticated;
+ create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+ create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);
+ create function storage.foldername(name text) returns text[] language sql immutable as $$select (string_to_array(name,'/'))[1:array_length(string_to_array(name,'/'),1)-1]$$;
+ alter table storage.objects enable row level security;grant select,insert,update,delete on storage.objects to authenticated;`);
+ await db.exec(await readFile(new URL('../supabase/storage.sql',import.meta.url),'utf8'));
+ const b=(await db.query("select public,file_size_limit,allowed_mime_types from storage.buckets where id='wine-photos'")).rows[0];
+ assert.equal(b.public,false);assert.equal(b.file_size_limit,2097152);assert.deepEqual(b.allowed_mime_types,['image/jpeg']);
+ const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222';
+ const as=async(u,sql)=>{await db.exec(`set role authenticated;select set_config('app.user_id','${u}',false)`);try{return await db.query(sql);}finally{await db.exec('reset role');}};
+ await as(A,`insert into storage.objects(bucket_id,name) values('wine-photos','${A}/a.jpg')`);
+ await assert.rejects(as(A,`insert into storage.objects(bucket_id,name) values('wine-photos','${B}/x.jpg')`));
+ await assert.rejects(as(B,`insert into storage.objects(bucket_id,name) values('wine-photos','${A}/y.jpg')`));
+ assert.equal((await as(B,`select * from storage.objects`)).rows.length,0);
+ assert.equal((await as(A,`select * from storage.objects`)).rows.length,1);
+ assert.equal((await as(B,`delete from storage.objects where name='${A}/a.jpg' returning *`)).rows.length,0);
+ assert.equal((await as(B,`update storage.objects set name='${B}/z.jpg' returning *`)).rows.length,0);
+ await db.exec(`set role anon`);await assert.rejects(db.query('select * from storage.objects'));
+});

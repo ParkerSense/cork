@@ -35,7 +35,7 @@ Supabase may pause a free project after one week of inactivity. Its default emai
 
 The hosted app uses GitHub sign-in and GitHub Pages. Collections start private. Use Share to create a read-only link, copy it again later, or turn it off. A reader must sign in. Revocation stops future access but cannot remove copies someone saved.
 
-Entries can be added, edited, deleted, searched, filtered, and exported as JSON under Privacy & storage. Photo upload is not included in this version.
+Entries can be added, edited, deleted, searched, filtered, and exported as JSON under Privacy & storage. Bottle photos are optional, private to the owner, resized in the browser (JPEG, long edge 1280px, no EXIF) and never shown on shared links. Apply `supabase/storage.sql` after the schema.
 
 `npm test` checks input validation, safe text rendering, row isolation, blocked owner spoofing, and read-only revocable sharing against PostgreSQL through PGlite. Production checks include GitHub OAuth, saved edits surviving reload, anonymous denial, a separate authenticated database subject seeing no private rows, and share-link revocation.
 

@@ -10,3 +10,14 @@ export function selectWines(wines, query='', style='All', sort='score') {
  return wines.filter(w => (style==='All'||w.style===style) && `${w.producer} ${w.name} ${w.country} ${w.vintage||''} ${w.notes||''}`.toLowerCase().includes(query.toLowerCase())).sort((a,b)=>sort==='recent'?new Date(b.created_at)-new Date(a.created_at):b.score-a.score||new Date(b.created_at)-new Date(a.created_at));
 }
 export function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+export const PHOTO_MAX_EDGE = 1280;
+export function fitSize(w, h, max = PHOTO_MAX_EDGE) {
+ if (!(w > 0) || !(h > 0)) throw new Error('Could not read that image.');
+ const s = Math.min(1, max / Math.max(w, h));
+ return { width: Math.max(1, Math.round(w * s)), height: Math.max(1, Math.round(h * s)) };
+}
+export function photoPath(ownerId, wineId) {
+ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+ if (!uuid.test(ownerId) || !uuid.test(wineId)) throw new Error('Bad photo path.');
+ return `${ownerId}/${wineId}.jpg`;
+}
