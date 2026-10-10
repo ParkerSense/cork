@@ -37,6 +37,10 @@ The hosted app uses GitHub sign-in and GitHub Pages. Collections start private. 
 
 Entries can be added, edited, deleted, searched, filtered, and exported as JSON under Privacy & storage. Bottle photos are optional, private to the owner, resized in the browser (JPEG, long edge 1280px, no EXIF) and never shown on shared links. Apply `supabase/storage.sql` after the schema.
 
+**Label scanning** runs fully on the phone (tesseract.js, MIT/Apache, self-hosted under `public/ocr/`, loaded only when you tap the scan button; no photo or text leaves the device). It only prefills empty fields for you to check.
+
+**Agent entry key** (`supabase/agent.sql`, apply after the schema): the owner approves a key hash through a pairing link `#pair=<sha256 hex>`; the secret stays with the agent. The key can only call `agent_add_wine` (insert for that owner, max 30 per hour). It cannot read, edit, delete, see photos, or share. The owner can turn it off in Privacy & storage. `agent.html` is a bare form that posts to that function.
+
 `npm test` checks input validation, safe text rendering, row isolation, blocked owner spoofing, and read-only revocable sharing against PostgreSQL through PGlite. Production checks include GitHub OAuth, saved edits surviving reload, anonymous denial, a separate authenticated database subject seeing no private rows, and share-link revocation.
 
 For GitHub Pages, rebuild and copy `dist/` into `docs/`, including `.nojekyll`, then publish `main:/docs`. Keep project credentials and private seed migrations out of this repository.
