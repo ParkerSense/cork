@@ -1,11 +1,10 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.76.0';
 import jpeg from 'npm:jpeg-js@0.4.4';
 const headers={'Access-Control-Allow-Origin':'https://parkersense.github.io','Access-Control-Allow-Headers':'content-type, apikey, authorization','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 const answer=(s:number,message:string)=>new Response(JSON.stringify({message}),{status:s,headers});
 Deno.serve(async(req)=>{
  if(req.method==='OPTIONS')return new Response('',{headers});
  if(req.method!=='POST')return answer(405,'POST only');
- let db:any,path='',claim='',key='';
+ let db:any,path='',claim='',key='',finishAttempted=false,finishRejected=false;
  try {
   const raw=await req.text();if(raw.length>2900000)return answer(413,'Photo too large');
   const d=JSON.parse(raw);key=String(d.key||'');
@@ -17,14 +16,17 @@ Deno.serve(async(req)=>{
   if(!decoded.width||!decoded.height||decoded.width>2000||decoded.height>2000)return answer(400,'Resize photo to 2000 pixels or less');
   const clean=jpeg.encode(decoded,82).data;
   if(clean.length>2097152)return answer(413,'Prepared photo too large');
-  db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+  const base=Deno.env.get('SUPABASE_URL')!,service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const request=async(route:string,body:any,type='application/json',method='POST')=>{const response=await fetch(base+route,{method,headers:{apikey:service,Authorization:'Bearer '+service,'Content-Type':type},body:type==='application/json'?JSON.stringify(body):body});const text=await response.text();const data=text?JSON.parse(text):null;return {data:response.ok?data:null,error:response.ok?null:true};};
+  db={rpc:(name:string,args:any)=>request('/rest/v1/rpc/'+name,args),storage:{from:()=>({upload:(path:string,data:any)=>request('/storage/v1/object/wine-photos/'+path,data,'image/jpeg'),remove:(paths:string[])=>request('/storage/v1/object/wine-photos',{prefixes:paths},'application/json','DELETE')})}};
   const r=await db.rpc('agent_photo_reserve',{p_key:key,p_producer:String(d.producer||'').slice(0,120),p_name:String(d.name||'').slice(0,160),p_vintage:d.vintage==null?null:Number(d.vintage)});
   if(r.error||!r.data?.[0])return answer(403,'Not allowed or target unavailable');
   path=r.data[0].object_path;claim=r.data[0].claim;
   const up=await db.storage.from('wine-photos').upload(path,clean,{contentType:'image/jpeg',upsert:false});
   if(up.error)throw new Error('upload');
+  finishAttempted=true;
   const f=await db.rpc('agent_photo_finish',{p_key:key,p_claim:claim});
-  if(f.error)throw new Error('attach');
+  if(f.error){finishRejected=true;throw new Error('attach');}
   return answer(200,'Photo attached.');
- }catch{if(db&&path)await db.storage.from('wine-photos').remove([path]);return answer(400,'Not attached. Check key, exact bottle details and JPEG size.');}
+ }catch{if(db&&path&&(!finishAttempted||finishRejected))await db.storage.from('wine-photos').remove([path]);return answer(finishAttempted&&!finishRejected?503:400,finishAttempted&&!finishRejected?'Attachment status uncertain. Check collection before retrying.':'Not attached. Check key, exact bottle details and JPEG size.');}
 });
