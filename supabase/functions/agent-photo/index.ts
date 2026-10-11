@@ -19,7 +19,7 @@ Deno.serve(async(req)=>{
   const base=Deno.env.get('SUPABASE_URL')!,service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const request=async(route:string,body:any,type='application/json',method='POST')=>{const response=await fetch(base+route,{method,headers:{apikey:service,Authorization:'Bearer '+service,'Content-Type':type},body:type==='application/json'?JSON.stringify(body):body});const text=await response.text();const data=text?JSON.parse(text):null;return {data:response.ok?data:null,error:response.ok?null:true};};
   db={rpc:(name:string,args:any)=>request('/rest/v1/rpc/'+name,args),storage:{from:()=>({upload:(path:string,data:any)=>request('/storage/v1/object/wine-photos/'+path,data,'image/jpeg'),remove:(paths:string[])=>request('/storage/v1/object/wine-photos',{prefixes:paths},'application/json','DELETE')})}};
-  const r=await db.rpc('agent_photo_reserve',{p_key:key,p_producer:String(d.producer||'').slice(0,120),p_name:String(d.name||'').slice(0,160),p_vintage:d.vintage==null?null:Number(d.vintage)});
+  const r=await db.rpc('agent_photo_reserve',{p_key:key,p_producer:String(d.producer||'').slice(0,120),p_name:String(d.name||'').slice(0,160),p_vintage:d.vintage==null?null:Number(d.vintage),p_drink_type:typeof d.drink_type==='string'?d.drink_type.slice(0,20):'Wine'});
   if(r.error||!r.data?.[0])return answer(403,'Not allowed or target unavailable');
   path=r.data[0].object_path;claim=r.data[0].claim;
   const up=await db.storage.from('wine-photos').upload(path,clean,{contentType:'image/jpeg',upsert:false});
@@ -28,5 +28,5 @@ Deno.serve(async(req)=>{
   const f=await db.rpc('agent_photo_finish',{p_key:key,p_claim:claim});
   if(f.error){finishRejected=true;throw new Error('attach');}
   return answer(200,'Photo attached.');
- }catch{if(db&&path&&(!finishAttempted||finishRejected))await db.storage.from('wine-photos').remove([path]);return answer(finishAttempted&&!finishRejected?503:400,finishAttempted&&!finishRejected?'Attachment status uncertain. Check collection before retrying.':'Not attached. Check key, exact bottle details and JPEG size.');}
+ }catch{if(db&&path&&(!finishAttempted||finishRejected))await db.storage.from('wine-photos').remove([path]);return answer(finishAttempted&&!finishRejected?503:400,finishAttempted&&!finishRejected?'Attachment status uncertain. Check collection before retrying.':'Not attached. Check key, exact drink details and JPEG size.');}
 });

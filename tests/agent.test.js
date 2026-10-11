@@ -1,9 +1,9 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {createHash} from 'node:crypto';import {PGlite} from '@electric-sql/pglite';
 import {parseLabel} from '../src/model.js';
 test('label parsing prefills sensible fields and skips noise',()=>{const p=parseLabel('CLOUDY BAY\nSauvignon Blanc\n2025\nMarlborough New Zealand\nALC. 13% BY VOL 750 ML\nGOVERNMENT WARNING');assert.equal(p.producer,'CLOUDY BAY');assert.equal(p.name,'Sauvignon Blanc');assert.equal(p.vintage,2025);assert.equal(p.country,'New Zealand');assert.equal(p.style,'White');assert.deepEqual(parseLabel(''),{producer:'',name:'',vintage:null,country:'',style:''});});
-test('agent key can only add wines for its owner, is revocable, rate limited',async()=>{
- const db=new PGlite();await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('app.user_id',true),'')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
- await db.exec(await readFile(new URL('../supabase/schema.sql',import.meta.url),'utf8'));await db.exec(await readFile(new URL('../supabase/agent.sql',import.meta.url),'utf8'));
+test('agent key can only add drinks for its owner, is revocable, rate limited',async()=>{
+ const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('app.user_id',true),'')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
+ for(const f of ['schema.sql','agent.sql','drinks.sql'])await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
  const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222';await db.exec(`insert into auth.users values('${A}'),('${B}')`);
  const as=async(r,u,sql)=>{await db.exec(`set role ${r};select set_config('app.user_id','${u}',false)`);try{return await db.query(sql);}finally{await db.exec('reset role');}};
  const secret='s3cret-'.repeat(8),hash=createHash('sha256').update(secret).digest('hex');
@@ -11,12 +11,19 @@ test('agent key can only add wines for its owner, is revocable, rate limited',as
  await as('authenticated',A,`select set_agent_key('${hash}')`);
  const add=(k,extra='')=>as('anon','',`select agent_add_wine('${k}','Prod','Wine',2020,'Italy','Red',7.5,'n${extra}')`);
  await add(secret);
- assert.equal((await as('authenticated',A,`select count(*)::int c from wines where added_via='agent'`)).rows[0].c,1);
+ assert.equal((await as('authenticated',A,`select drink_type from wines where added_via='agent'`)).rows[0].drink_type,'Wine');
+ await as('anon','',`select agent_add_wine('${secret}','Jipyeong','Makgeolli',null,'Korea',null,8,'sweet and fizzy','Makgeolli',6)`);
+ const mak=(await as('authenticated',A,`select drink_type,style,vintage,abv::float,notes from wines where producer='Jipyeong'`)).rows[0];
+ assert.deepEqual(mak,{drink_type:'Makgeolli',style:null,vintage:null,abv:6,notes:'sweet and fizzy'});
+ await as('anon','',`select agent_add_wine('${secret}','Jinro','Chamisul',null,'',null,7,'','Soju',16.5)`);
+ await assert.rejects(as('anon','',`select agent_add_wine('${secret}','P','W',2020,'','Red',7,'','vodka')`));
+ await assert.rejects(as('anon','',`select agent_add_wine('${secret}','P','W',2020,'','Red',7,'','Soju',null)`));
+ assert.equal((await as('authenticated',A,`select count(*)::int c from wines where added_via='agent'`)).rows[0].c,3);
  assert.equal((await as('authenticated',B,`select count(*)::int c from wines`)).rows[0].c,0);
  await assert.rejects(add('wrong'));await assert.rejects(as('anon','',`select agent_add_wine('${hash}','P','W',2020,'','Red',7,'')`));
  await assert.rejects(as('anon','',`select * from agent_keys`));await assert.rejects(as('authenticated',A,`select key_hash from agent_keys`));
  await assert.rejects(as('anon','',`select agent_add_wine('${secret}','P','W',2020,'','Bad',7,'')`));
  await assert.rejects(as('anon','',`select * from wines`));
- for(let i=0;i<29;i++)await add(secret);await assert.rejects(add(secret));
+ for(let i=0;i<27;i++)await add(secret);await assert.rejects(add(secret));
  await as('authenticated',A,`select revoke_agent_key()`);await assert.rejects(add(secret));
 });

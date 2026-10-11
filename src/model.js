@@ -1,13 +1,25 @@
-export function validateWine(w) {
- if (!String(w.producer || '').trim() || !String(w.name || '').trim()) throw new Error('Add a producer and wine name.');
- const score = Number(w.score);
- if (!Number.isFinite(score) || score < 0 || score > 10 || Math.round(score*10)!==score*10) throw new Error('Use a score from 0 to 10, in tenths.');
- const vintage = w.vintage === '' || w.vintage == null ? null : Number(w.vintage);
- if (vintage !== null && (!Number.isInteger(vintage) || vintage<1900 || vintage>2100)) throw new Error('Use a four-digit vintage, or leave it blank.');
- return {producer:String(w.producer).trim().slice(0,120),name:String(w.name).trim().slice(0,160),vintage,country:String(w.country||'').trim().slice(0,80),style:w.style,score,notes:String(w.notes||'').trim().slice(0,2000)};
+export const DRINK_TYPES=['Wine','Soju','Makgeolli','Beer','Whisky','Cocktail','Sake','Other'];
+export const WINE_STYLES=['Red','White','Rosé','Sparkling','Other'];
+export function validateDrink(d) {
+ const type=DRINK_TYPES.includes(d.drink_type)?d.drink_type:'Wine';
+ if(!String(d.producer||'').trim()||!String(d.name||'').trim())throw new Error(type==='Wine'?'Add a producer and wine name.':'Add a brand and drink name.');
+ const score=Number(d.score);
+ if(!Number.isFinite(score)||score<0||score>10||Math.round(score*10)!==score*10)throw new Error('Use a score from 0 to 10, in tenths.');
+ const entry={drink_type:type,producer:String(d.producer).trim().slice(0,120),name:String(d.name).trim().slice(0,160),vintage:null,country:String(d.country||'').trim().slice(0,80),style:null,score,notes:String(d.notes||'').trim().slice(0,2000),abv:null};
+ if(type==='Wine'){
+  const vintage=d.vintage===''||d.vintage==null?null:Number(d.vintage);
+  if(vintage!==null&&(!Number.isInteger(vintage)||vintage<1900||vintage>2100))throw new Error('Use a four-digit vintage, or leave it blank.');
+  if(!WINE_STYLES.includes(d.style))throw new Error('Choose a wine style.');
+  entry.vintage=vintage;entry.style=d.style;
+ }else{
+  const abv=d.abv===''||d.abv==null?null:Number(d.abv);
+  if(abv!==null&&(!Number.isFinite(abv)||abv<0||abv>100||Math.round(abv*10)!==abv*10))throw new Error('Use an ABV from 0 to 100, in tenths, or leave it blank.');
+  entry.abv=abv;
+ }
+ return entry;
 }
-export function selectWines(wines, query='', style='All', sort='score') {
- return wines.filter(w => (style==='All'||w.style===style) && `${w.producer} ${w.name} ${w.country} ${w.vintage||''} ${w.notes||''}`.toLowerCase().includes(query.toLowerCase())).sort((a,b)=>sort==='recent'?new Date(b.created_at)-new Date(a.created_at):b.score-a.score||new Date(b.created_at)-new Date(a.created_at));
+export function selectWines(wines, query='', style='All', sort='score', type='All') {
+ return wines.filter(w => (type==='All'||(w.drink_type||'Wine')===type) && (style==='All'||w.style===style) && `${w.producer} ${w.name} ${w.country} ${w.vintage||''} ${w.drink_type||'Wine'} ${w.abv??''} ${w.notes||''}`.toLowerCase().includes(query.toLowerCase())).sort((a,b)=>sort==='recent'?new Date(b.created_at)-new Date(a.created_at):b.score-a.score||new Date(b.created_at)-new Date(a.created_at));
 }
 export function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 export const PHOTO_MAX_EDGE = 1280;
