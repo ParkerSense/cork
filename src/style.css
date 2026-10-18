@@ -29,3 +29,14 @@ fieldset.taste-edit .legend-note{font-weight:400;color:var(--muted)}
 .pick .dot.on{background:var(--teal);border-color:var(--teal)}
 .pick input:focus-visible+.dot{outline:2px solid #73a89a;outline-offset:2px}
 .taste-hint{margin:2px 0 0;font-size:12px}
+
+/* Taste scales on narrow phones: dialog content is ~280-310px wide */
+@media(max-width:480px){
+  .axis-name{width:56px;font-size:11px}
+  .axis{gap:5px}
+  .axis-end{width:40px;font-size:10px}
+  .axis-dots{gap:3px}
+  .pick{padding:3px}
+  .pick .dot{width:16px;height:16px}
+  .taste-hint{font-size:11px}
+}
