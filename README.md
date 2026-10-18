@@ -2,7 +2,7 @@
 
 A small drink journal for your phone. Remember the bottles worth another glass.
 
-Private-by-default collections. Personal ratings from 0 to 10 for wine, soju, makgeolli, beer, whisky, cocktails, sake and more. Rank within each drink type or across everything. Search by brand, name, vintage, and country. Filter wine by style and sort by rating or date. Vintage and style are wine-only; other drinks carry brand and ABV. Optional read-only sharing can be turned off at any time.
+Private-by-default collections. Personal ratings from 0 to 10 for wine, soju, makgeolli, beer, whisky, cocktails, sake and more. Rank within each drink type or across everything. Search by brand, name, vintage, and country. Filter wine by style and sort by rating or date. Vintage and style are wine-only; other drinks carry brand and ABV. Wines can also carry an optional taste profile: four 1 to 5 scales - sweetness (dry to sweet), acidity (soft to acidic), tannin (smooth to tannic) and body (light to bold) - shown as dots on each entry. Scales are only ever set by hand; nothing is auto-filled. Optional read-only sharing can be turned off at any time.
 
 ## Run locally
 
@@ -23,7 +23,7 @@ npm run build
 
 ## Backend
 
-Use a dedicated Supabase project, apply `supabase/schema.sql`, and configure an authentication provider and allowed redirect URLs. Tables use row-level security: each signed-in person can read and change only their own entries. Anonymous users have no table permissions. Sharing uses an explicit revocable random token and returns only entry fields, never account IDs or emails. Apply `supabase/drinks.sql` last: it adds the drink type and ABV columns, keeps vintage and style wine-only, and widens `shared_wines` and the agent functions to every type.
+Use a dedicated Supabase project, apply `supabase/schema.sql`, and configure an authentication provider and allowed redirect URLs. Tables use row-level security: each signed-in person can read and change only their own entries. Anonymous users have no table permissions. Sharing uses an explicit revocable random token and returns only entry fields, never account IDs or emails. Apply `supabase/drinks.sql` after the other table migrations: it adds the drink type and ABV columns, keeps vintage and style wine-only, and widens `shared_wines` and the agent functions to every type. Apply `supabase/characteristics.sql` last: it adds the four optional wine taste scales, keeps them wine-only, and carries them through `shared_wines` and `agent_add_wine`.
 
 The public repository contains code only. Do not commit personal tasting entries, photos, database exports, credentials, sign-in links, or private share URLs. The hosted app talks directly to Supabase; no analytics or ad services are included.
 
@@ -41,7 +41,7 @@ Entries can be added, edited, deleted, searched, filtered by type (and by style 
 
 Results are separate suggestions with an Accept control per field. Nothing is auto-filled or saved, and changing photos clears suggestions. Crop, lighting and vintage-check guidance is shown at scan time. Accuracy is limited: on four public bottle-image variants (two labels, full and cropped), the strict prompt still returned erroneous details on two variants. This is a small smoke test, not a representative accuracy benchmark. Enter unclear details yourself. Tesseract and its roughly 7 MB local model assets have been removed; there is no hidden fallback.
 
-**Agent entry key** (`supabase/agent.sql`, apply after the schema): the owner approves a key hash through a pairing link `#pair=<sha256 hex>`; the secret stays with the agent. The key can only call `agent_add_wine` (insert for that owner, max 30 per hour). It cannot read, edit, delete, see photos, or share. The owner can turn it off in Privacy & storage. `agent.html` is a bare form that posts to that function.
+**Agent entry key** (`supabase/agent.sql`, apply after the schema): the owner approves a key hash through a pairing link `#pair=<sha256 hex>`; the secret stays with the agent. The key can only call `agent_add_wine` (insert for that owner, max 30 per hour, with optional taste scales for wine). It cannot read, edit, delete, see photos, or share. The owner can turn it off in Privacy & storage. `agent.html` is a bare form that posts to that function.
 
 `npm test` checks input validation, safe text rendering, row isolation, blocked owner spoofing, and read-only revocable sharing against PostgreSQL through PGlite. Production checks include GitHub OAuth, saved edits surviving reload, anonymous denial, a separate authenticated database subject seeing no private rows, and share-link revocation.
 

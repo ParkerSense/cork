@@ -1,7 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {PGlite} from '@electric-sql/pglite';import {createHash} from 'node:crypto';
 test('service-only photo attachment: owner binding, attach once, revoke, 30/hour',async()=>{
  const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('app.user_id',true),'')::uuid$$;grant usage on schema auth to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;`);
- for(const f of ['schema.sql','agent.sql','agent-photos.sql','drinks.sql'])await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
+ for(const f of ['schema.sql','agent.sql','agent-photos.sql','drinks.sql','characteristics.sql'])await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
  const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222',key='private-key-'.repeat(6),hash=createHash('sha256').update(key).digest('hex');await db.exec(`insert into auth.users values('${A}'),('${B}');insert into agent_keys(owner_id,key_hash) values('${A}','${hash}');insert into wines(owner_id,producer,name,vintage,style,score) values('${A}','P','W',2020,'Red',7),('${B}','Other','W',2020,'Red',8)`);
  const as=async(role,sql)=>{await db.exec('set role '+role);try{return await db.query(sql)}finally{await db.exec('reset role')}};
  const reserve=(k=key,p='P')=>`select * from agent_photo_reserve('${k}','${p}','W',2020)`;

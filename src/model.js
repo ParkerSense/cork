@@ -1,16 +1,28 @@
 export const DRINK_TYPES=['Wine','Soju','Makgeolli','Beer','Whisky','Cocktail','Sake','Other'];
 export const WINE_STYLES=['Red','White','Rosé','Sparkling','Other'];
+export const TASTE_AXES=[
+ {key:'sweetness',label:'Sweetness',low:'Dry',high:'Sweet',words:['Dry','Off-dry','Medium','Medium-sweet','Sweet']},
+ {key:'acidity',label:'Acidity',low:'Soft',high:'Acidic',words:['Soft','Gentle','Balanced','Bright','Acidic']},
+ {key:'tannin',label:'Tannin',low:'Smooth',high:'Tannic',words:['Smooth','Supple','Firm','Structured','Tannic']},
+ {key:'body',label:'Body',low:'Light',high:'Bold',words:['Light','Medium-light','Medium','Medium-full','Bold']},
+];
 export function validateDrink(d) {
  const type=DRINK_TYPES.includes(d.drink_type)?d.drink_type:'Wine';
  if(!String(d.producer||'').trim()||!String(d.name||'').trim())throw new Error(type==='Wine'?'Add a producer and wine name.':'Add a brand and drink name.');
  const score=Number(d.score);
  if(!Number.isFinite(score)||score<0||score>10||Math.round(score*10)!==score*10)throw new Error('Use a score from 0 to 10, in tenths.');
- const entry={drink_type:type,producer:String(d.producer).trim().slice(0,120),name:String(d.name).trim().slice(0,160),vintage:null,country:String(d.country||'').trim().slice(0,80),style:null,score,notes:String(d.notes||'').trim().slice(0,2000),abv:null};
+ const entry={drink_type:type,producer:String(d.producer).trim().slice(0,120),name:String(d.name).trim().slice(0,160),vintage:null,country:String(d.country||'').trim().slice(0,80),style:null,score,notes:String(d.notes||'').trim().slice(0,2000),abv:null,sweetness:null,acidity:null,tannin:null,body:null};
  if(type==='Wine'){
   const vintage=d.vintage===''||d.vintage==null?null:Number(d.vintage);
   if(vintage!==null&&(!Number.isInteger(vintage)||vintage<1900||vintage>2100))throw new Error('Use a four-digit vintage, or leave it blank.');
   if(!WINE_STYLES.includes(d.style))throw new Error('Choose a wine style.');
   entry.vintage=vintage;entry.style=d.style;
+  for(const a of TASTE_AXES){
+   const raw=d[a.key];
+   const v=raw===''||raw==null?null:Number(raw);
+   if(v!==null&&(!Number.isInteger(v)||v<1||v>5))throw new Error('Rate each taste characteristic from 1 to 5, or leave it blank.');
+   entry[a.key]=v;
+  }
  }else{
   const abv=d.abv===''||d.abv==null?null:Number(d.abv);
   if(abv!==null&&(!Number.isFinite(abv)||abv<0||abv>100||Math.round(abv*10)!==abv*10))throw new Error('Use an ABV from 0 to 100, in tenths, or leave it blank.');

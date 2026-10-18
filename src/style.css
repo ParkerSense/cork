@@ -7,3 +7,25 @@
 form .check{flex-direction:row;align-items:center;font-weight:400}
 
 .scan-suggestion{border:1px solid #e4e2da;border-radius:8px;padding:12px;margin:10px 0;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}.scan-suggestion p{margin:0;overflow-wrap:anywhere}.scan-suggestion button{min-height:44px}
+
+/* Wine taste profile */
+.taste{margin-top:16px;display:flex;flex-direction:column;gap:7px}
+.taste-row{display:flex;align-items:center;gap:10px}
+.taste-label{width:74px;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.dots{display:inline-flex;gap:5px}
+.dots .dot{width:10px;height:10px;border-radius:50%;background:#e6e1e2}
+.dots .dot.on{background:var(--teal)}
+.taste-word{font-size:12px;color:var(--muted)}
+fieldset.taste-edit{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+fieldset.taste-edit legend{font-size:13px;font-weight:600;padding:0;margin-bottom:2px}
+fieldset.taste-edit .legend-note{font-weight:400;color:var(--muted)}
+.axis{display:flex;align-items:center;gap:8px}
+.axis-name{width:74px;font-size:12px;font-weight:600}
+.axis-end{font-size:11px;color:var(--muted);width:52px;text-align:center;flex:none}
+.axis-dots{display:inline-flex;gap:4px}
+.pick{display:inline-flex;padding:6px;cursor:pointer;min-height:44px;min-width:auto;align-items:center}
+.pick input{position:absolute;opacity:0;width:1px;height:1px}
+.pick .dot{width:18px;height:18px;border-radius:50%;border:1px solid #d8d2d4;background:#fff;display:inline-block}
+.pick .dot.on{background:var(--teal);border-color:var(--teal)}
+.pick input:focus-visible+.dot{outline:2px solid #73a89a;outline-offset:2px}
+.taste-hint{margin:2px 0 0;font-size:12px}

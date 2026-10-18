@@ -1,7 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {PGlite} from '@electric-sql/pglite';
 test('private accounts, no anonymous access, read-only and revocable sharing',async()=>{
  const db=new PGlite();await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('app.user_id',true),'')::uuid$$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;`);
- for(const f of ['schema.sql','drinks.sql'])await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
+ for(const f of ['schema.sql','drinks.sql','characteristics.sql'])await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
  const a='11111111-1111-1111-1111-111111111111',b='22222222-2222-2222-2222-222222222222';await db.exec(`insert into auth.users values('${a}'),('${b}');`);
  await db.exec(`set role authenticated;set app.user_id='${a}';insert into public.wines(producer,name,style,score)values('Test Estate','Test wine','White',6);insert into public.wines(producer,name,score,drink_type,abv)values('Jipyeong','Makgeolli',8,'Makgeolli',6);`);
  assert.equal((await db.query('select * from wines')).rows.length,2);
@@ -11,13 +11,17 @@ test('private accounts, no anonymous access, read-only and revocable sharing',as
  await assert.rejects(db.exec(`insert into wines(producer,name,score,drink_type,abv)values('Bad','Soju',7,'Soju',140)`));
  await assert.rejects(db.exec(`insert into wines(producer,name,score,drink_type)values('Bad','Thing',7,'vodka')`));
  await assert.rejects(db.exec(`insert into wines(producer,name,score,drink_type)values('Bad','Wine',7,'Wine')`));
+ await assert.rejects(db.exec(`insert into wines(producer,name,score,drink_type,sweetness)values('Bad','Soju',7,'Soju',3)`));
+ await assert.rejects(db.exec(`insert into wines(producer,name,style,score,sweetness)values('Bad','Scale','Red',7,6)`));
+ await db.exec(`insert into public.wines(producer,name,style,score,sweetness,acidity,tannin,body)values('Tasted','Pinot','Red',7.5,1,4,2,3)`);
  await assert.rejects(db.exec(`insert into wines(owner_id,producer,name,style,score)values('${b}','Attack','Attack','White',6)`));
  const share=(await db.query('insert into collection_shares default values returning token')).rows[0].token;
  await db.exec(`set app.user_id='${b}';`);assert.equal((await db.query('select * from wines')).rows.length,0);
  assert.equal((await db.query("update wines set score=10 returning id")).rows.length,0);
  assert.equal((await db.query("delete from wines returning id")).rows.length,0);
  assert.equal((await db.query('select * from collection_shares')).rows.length,0);
- const shared=(await db.query(`select * from shared_wines('${share}')`)).rows;assert.equal(shared.length,2);assert.equal('owner_id' in shared[0],false);assert.equal('photo_path' in shared[0],false);
+ const shared=(await db.query(`select * from shared_wines('${share}')`)).rows;assert.equal(shared.length,3);
+ const sharedTaste=shared.find(r=>r.producer==='Tasted');assert.equal(sharedTaste.sweetness,1);assert.equal(sharedTaste.body,3);assert.equal('owner_id' in shared[0],false);assert.equal('photo_path' in shared[0],false);
  const sharedMak=shared.find(r=>r.drink_type==='Makgeolli');assert.equal(Number(sharedMak.abv),6);assert.equal(sharedMak.style,null);
  await db.exec(`set app.user_id='${a}';delete from collection_shares;set app.user_id='${b}';`);assert.equal((await db.query(`select * from shared_wines('${share}')`)).rows.length,0);
  await db.exec('reset role;set role anon;');await assert.rejects(db.query('select * from wines'));await assert.rejects(db.query(`select * from shared_wines('${share}')`));await db.close();
